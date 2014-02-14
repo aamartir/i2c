@@ -8,13 +8,13 @@ static void I2C::write8( uint8_t devID, uint8 reg_addr, int8_t val )
   Wire.endTransmission();			      // end transmission
 }
 
-static uint16_t I2C::write16( uint8_t devID, uint8_t reg_addr, int16_t val )
+static void I2C::write16( uint8_t devID, uint8_t reg_addr, int16_t val )
 {
   write8( devID, reg_addr, val >> 8 );
   write8( devID, reg_addr + 1, val & 0xFF )
 }
 
-static bool I2C::readBytes( uint8_t devID, uint8_t reg_addr, uint8_t bytesToRead, int8_t *buf )
+static boolean I2C::readBytes( uint8_t devID, uint8_t reg_addr, uint8_t bytesToRead, int8_t *buf )
 {
   Wire.beginTransmission(devID);	// start transmission to device 
   Wire.write(reg_addr);				    // send register address
@@ -52,7 +52,7 @@ static int8_t I2C::read8( uint8_t devID, uint8_t reg_addr )
   return ( b );
 }
 
-static uint16_t I2C::read16( uint8_t devID, uint8_t reg_addr )
+static int16_t I2C::read16( uint8_t devID, uint8_t reg_addr )
 {
   int8_t b[2];
   
@@ -66,18 +66,20 @@ static uint16_t I2C::read16( uint8_t devID, uint8_t reg_addr )
 /* bitNumber is from 0 to N-1, right to left. That is, bit 0 is the 
  * least significant bit. bit 1 the 2nd least significant, and so on. 
  */
-static bool I2C::readBit( uint8_t devID, uint8_t reg_addr, uint8_t bitNumber )
+static boolean I2C::readBit( uint8_t devID, uint8_t reg_addr, uint8_t bitNumber )
 {
-  uint8_t b;
-  b = read8( devID, reg_addr ); /* Populate b with the contents of reg_addr */
+  int8_t b;
+  
+  /* Read the contents of reg_addr */
+  b = read8( devID, reg_addr ); 
   return ( (b >> bitNumber) & 1 );
 }
 
 static void I2C::writeBit( uint8_t devID, uint8_t reg_addr, uint8_t bitNumber, bool val )
 {
-  uint8_t b;
+  int8_t b;
 
-  /* First we read the contents of reg_addr */
+  /* Read the contents of reg_addr */
   b = read8( devID, reg_addr ); 
 
   /* Modify the bit in the register */
@@ -88,4 +90,17 @@ static void I2C::writeBit( uint8_t devID, uint8_t reg_addr, uint8_t bitNumber, b
   
   /* Write new value to reg_addr */
   write8( devID, reg_addr, b );	
+}
+
+static void flipBit( uint8_t devID, uint8_t reg_addr, uint8_t bitNumber )
+{
+  int8_t b;
+  
+  /* Read the contents of reg_addr */
+  b = read8( devID, reg_addr ); 
+  
+  /* XOR operator */
+  b ^= ( 1 << bitNumber );
+  
+  write8( devID, reg_addr, b );
 }
