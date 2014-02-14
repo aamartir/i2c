@@ -1,17 +1,23 @@
 #include "I2C.h"
 
-static void I2C::writeByte( uint8_t devID, uint8 reg_addr, uint8_t val ) 
+static void I2C::write8( uint8_t devID, uint8 reg_addr, int8_t val ) 
 {
-  Wire.beginTransmission(devID);	// start transmission to device 
-  Wire.write(reg_addr);				// send register address
-  Wire.write(val);					// send value to write
-  Wire.endTransmission();			// end transmission
+  Wire.beginTransmission( devID );	// start transmission to device 
+  Wire.write( reg_addr );				    // send register address
+  Wire.write( val );					      // send value to write
+  Wire.endTransmission();			      // end transmission
 }
 
-static bool I2C::readBytes( uint8_t devID, uint8_t reg_addr, uint8_t bytesToRead, uint8_t *buf )
+static uint16_t I2C::write16( uint8_t devID, uint8_t reg_addr, int16_t val )
+{
+  write8( devID, reg_addr, val >> 8 );
+  write8( devID, reg_addr + 1, val & 0xFF )
+}
+
+static bool I2C::readBytes( uint8_t devID, uint8_t reg_addr, uint8_t bytesToRead, int8_t *buf )
 {
   Wire.beginTransmission(devID);	// start transmission to device 
-  Wire.write(reg_addr);				// send register address
+  Wire.write(reg_addr);				    // send register address
   Wire.endTransmission();
 
   Wire.beginTransmission(devID);
@@ -29,9 +35,32 @@ static bool I2C::readBytes( uint8_t devID, uint8_t reg_addr, uint8_t bytesToRead
 }
 
 /* Results of the read are stored in ptr */
-static void I2C::readByte( uint8_t devID, uint8_t reg_addr, uint8_t *ptr )
+static int8_t I2C::read8( uint8_t devID, uint8_t reg_addr )
 {
-  readBytes( devID, reg_addr, 1, ptr );
+  int8_t b;
+  
+  Wire.beginTransmission(devID);	// start transmission to device 
+  Wire.write(reg_addr);				    // send register address
+  Wire.endTransmission();
+
+  Wire.beginTransmission(devID);
+  Wire.requestFrom( devID, 1 );   // Request 1 byte from device
+  
+  b = Wire.read();
+  Wire.endTransmission();
+  
+  return ( b );
+}
+
+static uint16_t I2C::read16( uint8_t devID, uint8_t reg_addr )
+{
+  int8_t b[2];
+  
+  /* Read 1 word (2 bytes)*/
+  if( readBytes(devID, reg_addr, 2, b) )
+    return ( ((uint16_t) b[0] << 8) | b[1] );
+  
+  return false;
 }
 
 /* bitNumber is from 0 to N-1, right to left. That is, bit 0 is the 
@@ -39,24 +68,24 @@ static void I2C::readByte( uint8_t devID, uint8_t reg_addr, uint8_t *ptr )
  */
 static bool I2C::readBit( uint8_t devID, uint8_t reg_addr, uint8_t bitNumber )
 {
-  uint8_t byte_ptr;
-  readByte( devID, reg_addr, &byte_ptr ); /* Populate byte_ptr with the contents of reg_addr */
-  return ( (byte_ptr >> bitNumber) & 1 );
+  uint8_t b;
+  b = read8( devID, reg_addr ); /* Populate b with the contents of reg_addr */
+  return ( (b >> bitNumber) & 1 );
 }
 
 static void I2C::writeBit( uint8_t devID, uint8_t reg_addr, uint8_t bitNumber, bool val )
 {
-  uint8_t byte_ptr;
+  uint8_t b;
 
   /* First we read the contents of reg_addr */
-  readByte( devID, reg_addr, &byte_ptr ); 
+  b = read8( devID, reg_addr ); 
 
   /* Modify the bit in the register */
   if( val )
-    byte_ptr |= (val << bitNumber);
+    b |= (val << bitNumber);
   else
-    byte_ptr &= ~(val << bitNumber);
+    b &= ~(val << bitNumber);
   
   /* Write new value to reg_addr */
-  writeByte( devID, reg_addr, byte_ptr );	
+  write8( devID, reg_addr, b );	
 }
